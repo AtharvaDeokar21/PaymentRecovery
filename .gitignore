@@ -1,0 +1,47 @@
+# Environment
+.env
+*.env.local
+venv/
+__pycache__/
+*.pyc
+*.pyo
+node_modules/
+.next/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Python
+*.egg-info/
+dist/
+build/
+*.so
+
+# ML artifacts
+backend/app/ml/artifacts/*.joblib
+backend/app/ml/artifacts/*.pkl
+backend/app/ml/artifacts/*.json
+!backend/app/ml/artifacts/.gitkeep
+
+# Data
+data/raw/*.csv
+data/processed/*.csv
+data/evaluation/*.csv
+data/evaluation/*.json
+
+# Logs
+*.log
+
+# Coverage
+htmlcov/
+.coverage
+
+# Test
+backend/verify_completion.py
