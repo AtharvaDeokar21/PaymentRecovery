@@ -162,8 +162,16 @@ def tool_evaluate_policy(action_type: str, payment_id: int) -> dict:
         'amount': payment.amount,
         'attempt_number': payment.attempt_number,
         'failure_category': classify_failure(payment.failure_code, payment.attempt_number),
-        'recovery_probability': recovery_case.recovery_probability if recovery_case else 0.5,
-        'confidence': recovery_case.confidence if recovery_case else 0.5,
+        'recovery_probability': (
+            recovery_case.recovery_probability
+            if recovery_case and recovery_case.recovery_probability is not None
+            else 0.5
+        ),
+        'confidence': (
+            recovery_case.confidence
+            if recovery_case and recovery_case.confidence is not None
+            else 0.5
+        ),
         'last_action_at': None,
         'max_retry_attempts': 2,
         'max_auto_retry_amount': 1000000,

@@ -9,7 +9,7 @@ def get_tool_definitions() -> List[Dict[str, Any]]:
         {
             "name": "get_payment",
             "description": "Retrieve details of the failed payment",
-            "input_schema": {
+            "parameters": {
                 "type": "object",
                 "properties": {
                     "payment_id": {"type": "integer", "description": "Payment database ID"}
@@ -20,7 +20,7 @@ def get_tool_definitions() -> List[Dict[str, Any]]:
         {
             "name": "get_customer_history",
             "description": "Get customer transaction history and success rates",
-            "input_schema": {
+            "parameters": {
                 "type": "object",
                 "properties": {
                     "customer_id": {"type": "integer", "description": "Customer database ID"}
@@ -31,7 +31,7 @@ def get_tool_definitions() -> List[Dict[str, Any]]:
         {
             "name": "get_failure_context",
             "description": "Understand the failure pattern and category",
-            "input_schema": {
+            "parameters": {
                 "type": "object",
                 "properties": {
                     "failure_code": {"type": "string", "description": "Razorpay failure code"},
@@ -43,7 +43,7 @@ def get_tool_definitions() -> List[Dict[str, Any]]:
         {
             "name": "predict_recovery",
             "description": "Get ML model prediction for recovery probability",
-            "input_schema": {
+            "parameters": {
                 "type": "object",
                 "properties": {
                     "payment_id": {"type": "integer", "description": "Payment database ID"}
@@ -54,7 +54,7 @@ def get_tool_definitions() -> List[Dict[str, Any]]:
         {
             "name": "get_policy",
             "description": "Retrieve merchant recovery policy configuration",
-            "input_schema": {
+            "parameters": {
                 "type": "object",
                 "properties": {
                     "merchant_id": {"type": "integer", "description": "Merchant database ID"}
@@ -65,7 +65,7 @@ def get_tool_definitions() -> List[Dict[str, Any]]:
         {
             "name": "propose_recovery_action",
             "description": "Propose a recovery action (does not execute, just recommends)",
-            "input_schema": {
+            "parameters": {
                 "type": "object",
                 "properties": {
                     "action_type": {
@@ -82,7 +82,7 @@ def get_tool_definitions() -> List[Dict[str, Any]]:
         {
             "name": "evaluate_policy",
             "description": "Check if an action is permitted by policy",
-            "input_schema": {
+            "parameters": {
                 "type": "object",
                 "properties": {
                     "action_type": {"type": "string", "description": "RETRY | NOTIFY_CUSTOMER | etc."},
@@ -94,7 +94,7 @@ def get_tool_definitions() -> List[Dict[str, Any]]:
         {
             "name": "execute_retry",
             "description": "Execute a retry action (privileged—only after policy approval)",
-            "input_schema": {
+            "parameters": {
                 "type": "object",
                 "properties": {
                     "recovery_case_id": {"type": "integer", "description": "Recovery case ID"},
@@ -106,7 +106,7 @@ def get_tool_definitions() -> List[Dict[str, Any]]:
         {
             "name": "send_recovery_notification",
             "description": "Send customer notification about recovery options",
-            "input_schema": {
+            "parameters": {
                 "type": "object",
                 "properties": {
                     "recovery_case_id": {"type": "integer", "description": "Recovery case ID"},
@@ -119,7 +119,7 @@ def get_tool_definitions() -> List[Dict[str, Any]]:
         {
             "name": "escalate_case",
             "description": "Mark case for human review and stop automated processing",
-            "input_schema": {
+            "parameters": {
                 "type": "object",
                 "properties": {
                     "recovery_case_id": {"type": "integer", "description": "Recovery case ID"},

@@ -79,11 +79,13 @@ def demo_run():
 
 
 def _run_scenario(merchant, scenario: dict) -> dict:
-    """Run a single demo scenario."""
+    """Run a single demo scenario using the real RecoveryAgent pipeline."""
     scenario_id = scenario['id']
 
     try:
-        # Create customer
+        logger.info(f"========== SCENARIO {scenario_id} START ==========")
+
+        # 1. Create customer
         cust_data = scenario['customer']
         customer = Customer(
             merchant_id=merchant.id,
@@ -98,8 +100,9 @@ def _run_scenario(merchant, scenario: dict) -> dict:
         )
         db.session.add(customer)
         db.session.flush()
+        logger.info(f"Created customer: {customer.id} ({customer.name})")
 
-        # Create payment
+        # 2. Create payment
         payment_data = scenario['payment']
         payment = Payment(
             merchant_id=merchant.id,
@@ -116,8 +119,9 @@ def _run_scenario(merchant, scenario: dict) -> dict:
         )
         db.session.add(payment)
         db.session.flush()
+        logger.info(f"Created payment: {payment.id} (amount={payment.amount} paise)")
 
-        # Create payment event
+        # 3. Create payment event
         event = PaymentEvent(
             payment_id=payment.id,
             event_type='payment.failed',
@@ -127,9 +131,10 @@ def _run_scenario(merchant, scenario: dict) -> dict:
             },
         )
         db.session.add(event)
+        db.session.flush()
+        logger.info(f"Created payment event for failure code: {payment.failure_code}")
 
-        # Create recovery case
-        expected = scenario['expected_outcome']
+        # 4. Create recovery case (DETECTED status - waiting for analysis)
         case = RecoveryCase(
             payment_id=payment.id,
             status='DETECTED',
@@ -138,99 +143,70 @@ def _run_scenario(merchant, scenario: dict) -> dict:
         )
         db.session.add(case)
         db.session.flush()
-
-        # Simulate recovery analysis (would be done by agent in real scenario)
-        # For demo, we just set expected outcomes
-        case.recovery_probability = expected.get('recovery_probability_min', 0.5)
-        case.expected_recovery = int(payment.amount * case.recovery_probability)
-        case.recommended_action = expected['recommended_action']
-        case.diagnosis = f"Scenario {scenario_id}: {scenario['description']}"
-        case.confidence = expected.get('recovery_probability_min', 0.5)
-
-        # Create mock decision
-        decision = AgentDecision(
-            recovery_case_id=case.id,
-            diagnosis=f"Category from scenario",
-            reasoning_summary=scenario['description'],
-            confidence=case.confidence,
-            recommended_action=case.recommended_action,
-            tool_calls=[],
-        )
-        db.session.add(decision)
-
-        # Simulate final status
-        if scenario_id == 'A':
-            # Successful recovery
-            case.status = 'RECOVERED'
-            action = RecoveryAction(
-                recovery_case_id=case.id,
-                action_type='RETRY',
-                status='SUCCESSFUL',
-                reason='Gateway timeout resolved on retry',
-                recovered_amount=payment.amount,
-                result={'recovered': True},
-            )
-            db.session.add(action)
-
-            audit = AuditLog(
-                entity_type='recovery_case',
-                entity_id=case.id,
-                event_type='RECOVERED',
-                actor='RecoverAI Agent',
-                action='Payment recovered via retry',
-                output_summary={'amount_recovered': payment.amount},
-            )
-            db.session.add(audit)
-
-        elif scenario_id in ['C', 'D', 'E']:
-            # Escalated
-            case.status = 'ESCALATED'
-            action = RecoveryAction(
-                recovery_case_id=case.id,
-                action_type='ESCALATE',
-                status='EXECUTED',
-                reason=scenario['description'],
-                result={'escalated': True},
-            )
-            db.session.add(action)
-
-            audit = AuditLog(
-                entity_type='recovery_case',
-                entity_id=case.id,
-                event_type='ESCALATED',
-                actor='RecoverAI Agent',
-                action=f'Escalated: {scenario["description"]}',
-            )
-            db.session.add(audit)
-
-        elif scenario_id == 'B':
-            # Action pending (notification)
-            case.status = 'ACTION_PENDING'
-            action = RecoveryAction(
-                recovery_case_id=case.id,
-                action_type='NOTIFY_CUSTOMER',
-                status='EXECUTED',
-                reason='Insufficient funds — customer notification sent',
-                result={'notified': True},
-            )
-            db.session.add(action)
+        logger.info(f"Created recovery case: {case.id} (status=DETECTED, priority={case.priority})")
 
         db.session.commit()
+
+        # 5. Invoke the REAL RecoveryAgent to analyze the case
+        logger.info(f"Invoking RecoveryAgent.analyze({case.id})...")
+        from app.agent.recovery_agent import RecoveryAgent
+        agent = RecoveryAgent()
+        agent_result = agent.analyze(case.id)
+
+        # Refresh case from DB to get updates made by agent
+        db.session.refresh(case)
+
+        logger.info(f"Agent analysis complete. Case status: {case.status}")
+        logger.info(f"Recommended action: {case.recommended_action}")
+        logger.info(f"Recovery probability: {case.recovery_probability}")
+
+        # Check if agent hit an error
+        if agent_result.get('error'):
+            logger.error(f"Agent analysis failed: {agent_result['error']}")
+            case.status = 'FAILED'
+            db.session.commit()
+            return {
+                'scenario_id': scenario_id,
+                'name': scenario['name'],
+                'payment_id': payment.id,
+                'case_id': case.id,
+                'final_status': 'FAILED',
+                'amount': payment.amount,
+                'customer': customer.name,
+                'error': agent_result.get('error'),
+            }
+
+        # 6. Get latest agent decision to report
+        decisions = AgentDecision.query.filter_by(recovery_case_id=case.id).all()
+        latest_decision = decisions[-1] if decisions else None
+
+        logger.info(f"========== SCENARIO {scenario_id} END ==========")
+        logger.info(f"Final case status: {case.status}")
 
         return {
             'scenario_id': scenario_id,
             'name': scenario['name'],
+            'description': scenario['description'],
             'payment_id': payment.id,
             'case_id': case.id,
-            'final_status': case.status,
+            'customer_name': customer.name,
             'amount': payment.amount,
-            'customer': customer.name,
+            'failure_code': payment.failure_code,
+            'final_status': case.status,
+            'diagnosis': case.diagnosis,
+            'recommended_action': case.recommended_action,
+            'recovery_probability': case.recovery_probability,
+            'expected_recovery': case.expected_recovery,
+            'confidence': case.confidence,
+            'agent_decision_id': latest_decision.id if latest_decision else None,
+            'tool_calls_count': len(latest_decision.tool_calls) if latest_decision and latest_decision.tool_calls else 0,
         }
 
     except Exception as e:
-        logger.error(f"Scenario {scenario_id} failed: {e}")
+        logger.error(f"Scenario {scenario_id} failed with exception: {e}", exc_info=True)
         db.session.rollback()
         return {
             'scenario_id': scenario_id,
+            'name': scenario.get('name', 'Unknown'),
             'error': str(e),
         }

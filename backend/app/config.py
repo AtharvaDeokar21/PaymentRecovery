@@ -14,7 +14,7 @@ class Config:
     FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:3000')
 
     MAX_RETRY_ATTEMPTS = int(os.getenv('MAX_RETRY_ATTEMPTS', '2'))
-    MAX_AUTO_RETRY_AMOUNT = int(os.getenv('MAX_AUTO_RETRY_AMOUNT', '10000'))
+    MAX_AUTO_RETRY_AMOUNT = int(os.getenv('MAX_AUTO_RETRY_AMOUNT', '1000000'))  # ₹10,000 in paise
     MIN_RECOVERY_PROBABILITY = float(os.getenv('MIN_RECOVERY_PROBABILITY', '0.65'))
-    APPROVAL_THRESHOLD = int(os.getenv('APPROVAL_THRESHOLD', '10000'))
+    APPROVAL_THRESHOLD = int(os.getenv('APPROVAL_THRESHOLD', '1000000'))  # ₹10,000 in paise
     COOLDOWN_MINUTES = int(os.getenv('COOLDOWN_MINUTES', '15'))

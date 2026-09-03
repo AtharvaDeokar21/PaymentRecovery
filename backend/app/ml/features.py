@@ -40,8 +40,8 @@ def extract_features(df: pd.DataFrame) -> pd.DataFrame:
     features['repeat_failure'] = (features['attempt_number'] >= 3).astype(int)
     features['time_decay'] = np.exp(-features['hours_since_failure'] / 24.0)
 
-    # Drop original categorical columns and non-feature columns
-    drop_cols = ['record_id', 'currency', 'payment_method', 'failure_code', 'failure_category', 'recovery_probability']
+    # Drop original categorical columns and non-feature columns (including target variable!)
+    drop_cols = ['record_id', 'currency', 'payment_method', 'failure_code', 'failure_category', 'recovery_probability', 'recovered']
     features = features.drop(columns=[c for c in drop_cols if c in features.columns], errors='ignore')
 
     return features
